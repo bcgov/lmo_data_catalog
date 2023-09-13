@@ -16,9 +16,9 @@ cagrs <- function(tbbl){
   current <- tbbl$value[tbbl$year==current_year]
   fyfn <- tbbl$value[tbbl$year==fyfn]
   tyfn <- tbbl$value[tbbl$year==tyfn]
-  ffy_cagr <- scales::percent(((fyfn/current)^(.2)-1), accuracy = .1)
-  sfy_cagr <- scales::percent(((tyfn/fyfn)^(.2)-1), accuracy = .1)
-  ty_cagr <- scales::percent(((tyfn/current)^(.1)-1), accuracy = .1)
+  ffy_cagr <- ((fyfn/current)^(.2)-1)
+  sfy_cagr <- ((tyfn/fyfn)^(.2)-1)
+  ty_cagr <- ((tyfn/current)^(.1)-1)
   tibble(`1st 5-year CAGR`=ffy_cagr,
          `2nd 5-year CAGR`=sfy_cagr,
          `10-year CAGR`=ty_cagr)
