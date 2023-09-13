@@ -16,9 +16,9 @@ cagrs <- function(tbbl){
   current <- tbbl$value[tbbl$year==current_year]
   fyfn <- tbbl$value[tbbl$year==fyfn]
   tyfn <- tbbl$value[tbbl$year==tyfn]
-  ffy_cagr <- round(((fyfn/current)^(.2)-1)*100, 1)
-  sfy_cagr <- round(((tyfn/fyfn)^(.2)-1)*100, 1)
-  ty_cagr <- round(((tyfn/current)^(.1)-1)*100, 1)
+  ffy_cagr <- scales::percent(((fyfn/current)^(.2)-1), accuracy = .1)
+  sfy_cagr <- scales::percent(((tyfn/fyfn)^(.2)-1), accuracy = .1)
+  ty_cagr <- scales::percent(((tyfn/current)^(.1)-1), accuracy = .1)
   tibble(`1st 5-year CAGR`=ffy_cagr,
          `2nd 5-year CAGR`=sfy_cagr,
          `10-year CAGR`=ty_cagr)
@@ -123,7 +123,7 @@ write.xlsx(tbbl3, here("out","job_openings_by_industry_and_occupation_for_bc_lmo
 
 # hoo bc and regions by TEER------------------------------
 
-hoo_sheets <- readxl::excel_sheets(here("raw_data",
+hoo_sheets <- excel_sheets(here("raw_data",
                                         "LMO 2023E HOO BC and Regions 2023-08-23.xlsx"))
 hoo_data <- tibble(sheet=hoo_sheets[-length(hoo_sheets)])%>%
   mutate(data=map(sheet, load_sheet),
