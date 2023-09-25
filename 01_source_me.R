@@ -47,6 +47,15 @@ join_income <- function(tbbl){
   inner_join(tbbl, income)
 }
 
+get_noc <- function(str){
+  temp <- as.data.frame(str_split_fixed(str, " ", 2))
+  colnames(temp) <- c("#NOC (2021)","description")
+  temp <- temp%>%
+    mutate(`#NOC (2021)`=paste0("#", `#NOC (2021)`))%>%
+    select(-description)
+}
+
+
 #read in data--------------------
 
 employment <- vroom(here("raw_data","employment.csv"), skip = 3)%>%
@@ -55,15 +64,15 @@ employment <- vroom(here("raw_data","employment.csv"), skip = 3)%>%
 jo <- vroom(here("raw_data","job_openings.csv"), skip = 3)%>%
   janitor::remove_empty()
 
-income <- read_excel(here("raw_data",
-                          "Census 2021 Median Employment Income.xlsx"),
-                     skip=4,
+income <- read_excel(here("raw_data","median_income_jackie.xlsx"),
+                     skip=6,
                      col_names = FALSE,
-                     sheet="WS1",
                      na = "x")
-income <- income[,c(1,4)]%>%
-  na.omit()
-colnames(income) <- c("#NOC (2021)","Median Income (Census 2021)")
+colnames(income) <- c("noc","everybody", "Median Income (Census 2021)")
+income <- income%>%
+  mutate(nocdf=map(noc, get_noc), .before = noc)%>%
+  select(-noc, -everybody)%>%
+  unnest(nocdf)
 
 #employment by industry and occupation for bc-------------------------------
 
@@ -130,6 +139,35 @@ hoo_data <- tibble(sheet=hoo_sheets[-length(hoo_sheets)])%>%
          data=map(data, join_income))%>%
   deframe()%>%
   write.xlsx(file = here("out","hoo_bc_and_regions_by_TEER_lmo_2023.xlsx"))
+
+#job-openings-expansion-replacement-by-occupation-for-bc-and-regions-lmo-2022e.xlsx---------
+
+tbbl4 <- jo%>%
+  pivot_longer(cols=starts_with("2"), names_to = "year", values_to = "value")%>%
+  clean_names()%>%
+  filter(variable %in% c("Job Openings", "Expansion Demand", "Replacement Demand"),
+         industry=="All industries",
+         !geographic_area %in% c("North","South East")
+         )%>%
+  group_by(noc, description, industry, variable, geographic_area)%>%
+  nest()%>%
+  mutate(sums=map(data, sums))%>%
+  unnest(data)%>%
+  pivot_wider(names_from = year, values_from = value)%>%
+  relocate(sums, .after=everything())%>%
+  unnest(sums)
+
+colnames(tbbl4) <- str_to_title(str_replace_all(colnames(tbbl4), "_", " "))
+colnames(tbbl4)[1] <- "NOC"
+
+tbbl4|>
+  split(tbbl4$`Geographic Area`)|>
+  write.xlsx(here("out",
+                  "job-openings-expansion-replacement-by-occupation-for-bc-and-regions-lmo-2022e.xlsx"),
+             overwrite = TRUE,
+             asTable = TRUE
+             )
+
 
 
 
