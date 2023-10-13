@@ -1,3 +1,5 @@
+#' Prepares the files for the BC data catalog
+
 library(tidyverse)
 library(conflicted)
 library(here)
@@ -36,7 +38,7 @@ sums <- function(tbbl){
 
 load_sheet <- function(sht){
   temp <- read_excel(here("raw_data",
-                          "LMO 2023E HOO BC and Regions 2023-08-23.xlsx"),
+                          list.files(here("raw_data"), pattern = "HOO BC and Regions")),
                      sheet=sht,
                      skip=4)
   temp[,1:3]%>%
@@ -64,15 +66,12 @@ employment <- vroom(here("raw_data","employment.csv"), skip = 3)%>%
 jo <- vroom(here("raw_data","job_openings.csv"), skip = 3)%>%
   janitor::remove_empty()
 
-income <- read_excel(here("raw_data","median_income_jackie.xlsx"),
-                     skip=6,
-                     col_names = FALSE,
-                     na = "x")
-colnames(income) <- c("noc","everybody", "Median Income (Census 2021)")
-income <- income%>%
-  mutate(nocdf=map(noc, get_noc), .before = noc)%>%
-  select(-noc, -everybody)%>%
-  unnest(nocdf)
+income <- read_excel(here("raw_data","Census 2021 Median Employment Income.xlsx"))|>
+  select(NOC, `Median Income (Census 2021)`= contains("Median employment income"))|>
+  mutate(`Median Income (Census 2021)`=as.numeric(`Median Income (Census 2021)`))
+
+sd <- vroom(here("raw_data","supply_demand5.csv"), skip = 3)%>%
+  janitor::remove_empty()
 
 #employment by industry and occupation for bc-------------------------------
 
@@ -90,7 +89,10 @@ tbbl1 <- employment%>%
 colnames(tbbl1) <- str_to_title(str_replace_all(colnames(tbbl1), "_", " "))
 colnames(tbbl1)[1] <- "NOC"
 
-write.xlsx(tbbl1, here("out","employment_by_industry_and_occupation_for_bc_lmo_2023.xlsx"))
+write.xlsx(tbbl1, here("out",
+                       paste0("employment_by_industry_and_occupation_for_bc_lmo_",
+                              current_year,
+                              ".xlsx")))
 
 #employment by industry for bc and regions-----------------------------------
 
@@ -109,7 +111,10 @@ tbbl2 <- employment%>%
 colnames(tbbl2) <- str_to_title(str_replace_all(colnames(tbbl2), "_", " "))
 colnames(tbbl2)[1] <- "NOC"
 
-write.xlsx(tbbl2, here("out","employment_by_industry_for_bc_and_regions_lmo_2023.xlsx"))
+write.xlsx(tbbl2, here("out",
+                       paste0("employment_by_industry_for_bc_and_regions_lmo_",
+                              current_year,
+                              ".xlsx")))
 
 #job openings by industry and occupation for bc------------------------
 
@@ -128,19 +133,25 @@ tbbl3 <- jo%>%
 colnames(tbbl3) <- str_to_title(str_replace_all(colnames(tbbl3), "_", " "))
 colnames(tbbl3)[1] <- "NOC"
 
-write.xlsx(tbbl3, here("out","job_openings_by_industry_and_occupation_for_bc_lmo_2023.xlsx"))
+write.xlsx(tbbl3, here("out",
+                       paste0("job_openings_by_industry_and_occupation_for_bc_lmo_",
+                              current_year,
+                              ".xlsx")))
 
 # hoo bc and regions by TEER------------------------------
 
 hoo_sheets <- excel_sheets(here("raw_data",
                                         "LMO 2023E HOO BC and Regions 2023-08-23.xlsx"))
-hoo_data <- tibble(sheet=hoo_sheets[-length(hoo_sheets)])%>%
+tibble(sheet=hoo_sheets[-length(hoo_sheets)])%>%
   mutate(data=map(sheet, load_sheet),
          data=map(data, join_income))%>%
   deframe()%>%
-  write.xlsx(file = here("out","hoo_bc_and_regions_by_TEER_lmo_2023.xlsx"))
+  write.xlsx(file = here("out",
+                         paste0("hoo_bc_and_regions_by_TEER_lmo_",
+                                current_year,
+                                ".xlsx")))
 
-#job-openings-expansion-replacement-by-occupation-for-bc-and-regions-lmo-2022e.xlsx---------
+#job-openings-expansion-replacement-by-occupation-for-bc-and-regions-lmo-YEARe.xlsx---------
 
 tbbl4 <- jo%>%
   pivot_longer(cols=starts_with("2"), names_to = "year", values_to = "value")%>%
@@ -163,18 +174,96 @@ colnames(tbbl4)[1] <- "NOC"
 tbbl4|>
   split(tbbl4$`Geographic Area`)|>
   write.xlsx(here("out",
-                  "job-openings-expansion-replacement-by-occupation-for-bc-and-regions-lmo-2022e.xlsx"),
+                  paste0("job-openings-expansion-replacement-by-occupation-for-bc-and-regions-lmo-",
+                         current_year,
+                         ".xlsx")),
              overwrite = TRUE,
              asTable = TRUE
              )
 
 
+#Employment_by_Ind_and_Occ_for_BC_and_Regions_xxxx.xlsx------------------
 
+tbbl5 <- employment|>
+  filter(!`Geographic Area` %in% c("North","South East"))|>
+  pivot_longer(cols = starts_with("2"),
+               names_to = "Date",
+               values_to = "Value")
+  write.xlsx(tbbl5,
+             here("out",
+                  paste0("Employment_by_Ind_and_Occ_for_BC_and_Regions_",
+                         current_year,
+                         ".xlsx")))
 
+#Employment_by_Occupation_for_BC_and_Regions_xxxx.xlsx------------------
 
+tbbl6 <- employment%>%
+  pivot_longer(cols=starts_with("2"), names_to = "year", values_to = "value")%>%
+  clean_names()%>%
+  filter(industry=="All industries",
+         !geographic_area %in% c("North","South East"))%>%
+  group_by(noc, description, industry, variable, geographic_area)%>%
+  nest()%>%
+  mutate(cagrs=map(data, cagrs))%>%
+  unnest(data)%>%
+  pivot_wider(names_from = year, values_from = value)%>%
+  relocate(cagrs, .after=everything())%>%
+  unnest(cagrs)
+colnames(tbbl6) <- str_to_title(str_replace_all(colnames(tbbl6), "_", " "))
+colnames(tbbl6)[1] <- "NOC"
 
+write.xlsx(tbbl6, here("out",
+                       paste0("Employment_by_Occupation_for_BC_and_Regions_",
+                              current_year,
+                              ".xlsx")))
 
+#Job_Openings_by_Type_and_Occ_for_BC_and_Regions_xxxx.xlsx
 
+tbbl7 <- jo%>%
+  pivot_longer(cols=starts_with("2"), names_to = "year", values_to = "value")%>%
+  clean_names()%>%
+  filter(industry=="All industries",
+         variable %in% c("Job Openings","Expansion Demand","Replacement Demand"),
+         !geographic_area %in% c("North","South East"))%>%
+  group_by(noc, description, industry, variable, geographic_area)%>%
+  nest()%>%
+  mutate(sums=map(data, sums))%>%
+  unnest(data)%>%
+  pivot_wider(names_from = year, values_from = value)%>%
+  relocate(sums, .after=everything())%>%
+  unnest(sums)
+colnames(tbbl7) <- str_to_title(str_replace_all(colnames(tbbl7), "_", " "))
+colnames(tbbl7)[1] <- "NOC"
+
+write.xlsx(tbbl7, here("out",
+                       paste0("Job_Openings_by_Type_and_Occ_for_BC_and_Regions_",
+                              current_year,
+                              ".xlsx")))
+
+#JO_by_Type,_Ind_and_Occ_for_BC_and_Regions_xxxx.xlsx---------------------------------
+
+tbbl8 <- jo%>%
+  pivot_longer(cols=starts_with("2"), names_to = "year", values_to = "value")%>%
+  clean_names()%>%
+  filter(variable %in% c("Job Openings","Expansion Demand","Replacement Demand"),
+         !geographic_area %in% c("North","South East"))%>%
+  group_by(noc, description, industry, variable, geographic_area)%>%
+  nest()%>%
+  mutate(sums=map(data, sums))%>%
+  unnest(data)%>%
+  pivot_wider(names_from = year, values_from = value)%>%
+  relocate(sums, .after=everything())%>%
+  unnest(sums)
+colnames(tbbl8) <- str_to_title(str_replace_all(colnames(tbbl8), "_", " "))
+colnames(tbbl8)[1] <- "NOC"
+
+write.xlsx(tbbl8, here("out",
+                       paste0("JO_by_Type,_Ind_and_Occ_for_BC_and_Regions_",
+                              current_year,
+                              ".xlsx")))
+# LMO2023E-supply-composition-output-total10yr: from feng-----------------------
+# LMO2023E-supply-composition-output-annual: from feng--------------------------
+# Definitions: from report
 
 
 
