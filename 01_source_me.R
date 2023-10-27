@@ -261,9 +261,9 @@ zip(zipfile=here("out",
 #get rid of csv file
 file.remove(here("out",
                   "JO by Type, Ind and Occ for BC and Regions (long).csv"))
-# LMO2023E-supply-composition-output-total10yr: from Feng-----------------------
-# LMO2023E-supply-composition-output-annual: from Feng--------------------------
-# Definitions: from report
+# Supply Composition for BC (10-Year Total) from Feng-------------
+# Supply Composition for BC (Annual) from Feng--------------------
+# Definitions: from report----------------
 
 
 
