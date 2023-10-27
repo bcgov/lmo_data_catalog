@@ -93,10 +93,7 @@ tbbl1 <- employment%>%
 colnames(tbbl1) <- str_to_title(str_replace_all(colnames(tbbl1), "_", " "))
 colnames(tbbl1)[1] <- "NOC"
 
-write.xlsx(tbbl1, here("out",
-                       paste0("employment_by_industry_and_occupation_for_bc_lmo_",
-                              current_year,
-                              ".xlsx")))
+write.xlsx(tbbl1, here("out", "Employment by Industry and Occupation for BC.xlsx"))
 
 #employment by industry for bc and regions-----------------------------------
 
@@ -123,10 +120,7 @@ tbbl2_by_region <- tbbl2|>
 
 tbbl2 <- c(tbbl2_data, tbbl2_by_region)
 
-write.xlsx(tbbl2, here("out",
-                       paste0("employment_by_industry_for_bc_and_regions_lmo_",
-                              current_year,
-                              ".xlsx")))
+write.xlsx(tbbl2, here("out", "Employment by Industry for BC and Regions.xlsx"))
 
 #job openings by industry and occupation for bc------------------------
 
@@ -145,10 +139,7 @@ tbbl3 <- jo%>%
 colnames(tbbl3) <- str_to_title(str_replace_all(colnames(tbbl3), "_", " "))
 colnames(tbbl3)[1] <- "NOC"
 
-write.xlsx(tbbl3, here("out",
-                       paste0("job_openings_by_industry_and_occupation_for_bc_lmo_",
-                              current_year,
-                              ".xlsx")))
+write.xlsx(tbbl3, here("out", "Job Openings by Industry and Occupation for BC.xlsx"))
 
 # High_Opportunity_Occupations_BC_and_regions------------------------------
 hoo_sheets <- excel_sheets(here("raw_data",
@@ -159,9 +150,7 @@ tibble(sheet=hoo_sheets[-length(hoo_sheets)])%>%
          data=map(data, fix_names))%>% #weirdness with job openings column name
   deframe()%>%
   write.xlsx(file = here("out",
-                         paste0("High_Opportunity_Occupations_BC_and_regions_",
-                                current_year,
-                                ".xlsx")))
+                         "High Opportunity Occupations BC and Regions.xlsx"))
 
 #JO_by_Type,_Ind_and_Occ_for_BC_and_Regions_xxxx.xlsx---------
 
@@ -184,12 +173,9 @@ colnames(tbbl4)[1] <- "NOC"
 
 tbbl4|>
   write.xlsx(here("out",
-                  paste0("JO_by_Type,_Ind_and_Occ_for_BC_and_Regions_",
-                         current_year,
-                         ".xlsx")),
+                  "JO by Type, Ind and Occ for BC and Regions.xlsx"),
              overwrite = TRUE,
              )
-
 
 #Employment_by_Ind_and_Occ_for_BC_and_Regions_xxxx.xlsx------------------
 
@@ -200,9 +186,7 @@ tbbl5 <- employment|>
                values_to = "Value")
   write.xlsx(tbbl5,
              here("out",
-                  paste0("Employment_by_Ind_and_Occ_for_BC_and_Regions_",
-                         current_year,
-                         ".xlsx")))
+                  "Employment by Ind and Occ for BC and Regions.xlsx"))
 
 #Employment_by_Occupation_for_BC_and_Regions_xxxx.xlsx------------------
 
@@ -230,9 +214,7 @@ tbbl6_by_region <- tbbl6|>
 tbbl6 <- c(tbbl6_data, tbbl6_by_region)
 
 write.xlsx(tbbl6, here("out",
-                       paste0("Employment_by_Occupation_for_BC_and_Regions_",
-                              current_year,
-                              ".xlsx")))
+                       "Employment by Occupation for BC and Regions.xlsx"))
 
 #Job_Openings_by_Type_and_Occ_for_BC_and_Regions_xxxx.xlsx
 
@@ -261,9 +243,8 @@ tbbl7_by_region <- tbbl7|>
 tbbl7 <- c(tbbl7_data, tbbl7_by_region)
 
 write.xlsx(tbbl7, here("out",
-                       paste0("Job_Openings_by_Type_and_Occ_for_BC_and_Regions_",
-                              current_year,
-                              ".xlsx")), asTable = TRUE)
+                       "Job Openings by Type and Occ for BC and Regions.xlsx"),
+           asTable = TRUE)
 
 #JO_by_Type,_Ind_and_Occ_for_BC_and_Regions_long---------------------------
 
@@ -272,11 +253,14 @@ tbbl8 <- jo%>%
   filter(!`Geographic Area` %in% c("North","South East"))
 
 write_csv(tbbl8, here("out",
-                       paste0("JO_by_Type,_Ind_and_Occ_for_BC_and_Regions_long_",
-                              current_year,
-                              ".csv")))
-
-
+                      "JO by Type, Ind and Occ for BC and Regions (long).csv"))
+#huge file so zip it---------------------
+zip(zipfile=here("out",
+                 "JO by Type, Ind and Occ for BC and Regions (long)"),
+    files=here("out","JO by Type, Ind and Occ for BC and Regions (long).csv"))
+#get rid of csv file
+file.remove(here("out",
+                  "JO by Type, Ind and Occ for BC and Regions (long).csv"))
 # LMO2023E-supply-composition-output-total10yr: from Feng-----------------------
 # LMO2023E-supply-composition-output-annual: from Feng--------------------------
 # Definitions: from report
