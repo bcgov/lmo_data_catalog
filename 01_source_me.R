@@ -265,5 +265,27 @@ file.remove(here("out",
 # Supply Composition for BC (Annual) from Feng--------------------
 # Definitions: from report----------------
 
+#Job Openings by Skill Cluster-------------------------------
 
+tbbl9 <- jo |>
+  filter(Industry=="All industries",
+         `Geographic Area`=="British Columbia",
+         Variable=="Job Openings")|>
+  select(-Industry, -`Geographic Area`, -Variable)|>
+  pivot_longer(cols=starts_with("2"), names_to = "year", values_to = "jo")|>
+  group_by(NOC, Description)|>
+  summarize(jo=sum(jo))
 
+clusters <- read_csv(here("raw_data","clusters.csv"))|>
+  select(NOC, new_cluster)|>
+  separate(NOC, into=c("NOC", "Description"), sep=": ")|>
+  mutate(NOC=paste0("#", NOC))
+
+inner_join(tbbl9, clusters)|>
+  select(NOC,
+         Description,
+         `Occ Group: Skills Cluster`=new_cluster,
+         "LMO Job Openings {current_year}-{tyfn}":=jo
+         )|>
+  write.xlsx(here("out",
+                  "Job Openings by NOC and Skill Cluster.xlsx"))
