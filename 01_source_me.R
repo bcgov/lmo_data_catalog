@@ -14,6 +14,11 @@ fyfn <- current_year+5
 tyfn <- current_year+10
 #functions---------------------------
 
+fix_names <- function(tbbl){
+  colnames(tbbl) <- str_replace_all(colnames(tbbl),"\r\n"," ")
+  tbbl
+}
+
 cagrs <- function(tbbl){
   current <- tbbl$value[tbbl$year==current_year]
   fyfn <- tbbl$value[tbbl$year==fyfn]
@@ -46,7 +51,7 @@ load_sheet <- function(sht){
 }
 
 join_income <- function(tbbl){
-  inner_join(tbbl, income)
+  inner_join(tbbl, income, by=c("#NOC (2021)"="NOC"))
 }
 
 get_noc <- function(str){
@@ -56,7 +61,6 @@ get_noc <- function(str){
     mutate(`#NOC (2021)`=paste0("#", `#NOC (2021)`))%>%
     select(-description)
 }
-
 
 #read in data--------------------
 
@@ -111,6 +115,14 @@ tbbl2 <- employment%>%
 colnames(tbbl2) <- str_to_title(str_replace_all(colnames(tbbl2), "_", " "))
 colnames(tbbl2)[1] <- "NOC"
 
+tbbl2_data <- list("data" = tbbl2)
+tbbl2_by_region <- tbbl2|>
+  ungroup()|>
+  select(-NOC, -Description, -Variable)|>
+  split(tbbl2$`Geographic Area`)
+
+tbbl2 <- c(tbbl2_data, tbbl2_by_region)
+
 write.xlsx(tbbl2, here("out",
                        paste0("employment_by_industry_for_bc_and_regions_lmo_",
                               current_year,
@@ -139,12 +151,12 @@ write.xlsx(tbbl3, here("out",
                               ".xlsx")))
 
 # hoo bc and regions by TEER------------------------------
-
 hoo_sheets <- excel_sheets(here("raw_data",
-                                        "LMO 2023E HOO BC and Regions 2023-08-23.xlsx"))
+                                "LMO 2023E HOO BC and Regions 2023-08-23.xlsx"))
 tibble(sheet=hoo_sheets[-length(hoo_sheets)])%>%
   mutate(data=map(sheet, load_sheet),
-         data=map(data, join_income))%>%
+         data=map(data, join_income),
+         data=map(data, fix_names))%>% #weirdness with job openings column name
   deframe()%>%
   write.xlsx(file = here("out",
                          paste0("hoo_bc_and_regions_by_TEER_lmo_",
@@ -212,6 +224,14 @@ tbbl6 <- employment%>%
 colnames(tbbl6) <- str_to_title(str_replace_all(colnames(tbbl6), "_", " "))
 colnames(tbbl6)[1] <- "NOC"
 
+tbbl6_data <- list("data"=tbbl6)
+tbbl6_by_region <- tbbl6|>
+  ungroup()|>
+  select(-Industry, -Variable)|>
+  split(tbbl6$`Geographic Area`)
+
+tbbl6 <- c(tbbl6_data, tbbl6_by_region)
+
 write.xlsx(tbbl6, here("out",
                        paste0("Employment_by_Occupation_for_BC_and_Regions_",
                               current_year,
@@ -235,25 +255,25 @@ tbbl7 <- jo%>%
 colnames(tbbl7) <- str_to_title(str_replace_all(colnames(tbbl7), "_", " "))
 colnames(tbbl7)[1] <- "NOC"
 
+tbbl7_data <- list("data"=tbbl7)
+tbbl7_by_region <- tbbl7|>
+  ungroup()|>
+  select(-Industry)|>
+  split(tbbl7$`Geographic Area`)
+
+tbbl7 <- c(tbbl7_data, tbbl7_by_region)
+
 write.xlsx(tbbl7, here("out",
                        paste0("Job_Openings_by_Type_and_Occ_for_BC_and_Regions_",
                               current_year,
-                              ".xlsx")))
+                              ".xlsx")), asTable = TRUE)
 
 #JO_by_Type,_Ind_and_Occ_for_BC_and_Regions_xxxx.xlsx---------------------------------
 
 tbbl8 <- jo%>%
   pivot_longer(cols=starts_with("2"), names_to = "year", values_to = "value")%>%
   clean_names()%>%
-  filter(variable %in% c("Job Openings","Expansion Demand","Replacement Demand"),
-         !geographic_area %in% c("North","South East"))%>%
-  group_by(noc, description, industry, variable, geographic_area)%>%
-  nest()%>%
-  mutate(sums=map(data, sums))%>%
-  unnest(data)%>%
-  pivot_wider(names_from = year, values_from = value)%>%
-  relocate(sums, .after=everything())%>%
-  unnest(sums)
+  filter(!geographic_area %in% c("North","South East"))
 colnames(tbbl8) <- str_to_title(str_replace_all(colnames(tbbl8), "_", " "))
 colnames(tbbl8)[1] <- "NOC"
 
@@ -261,8 +281,8 @@ write.xlsx(tbbl8, here("out",
                        paste0("JO_by_Type,_Ind_and_Occ_for_BC_and_Regions_",
                               current_year,
                               ".xlsx")))
-# LMO2023E-supply-composition-output-total10yr: from feng-----------------------
-# LMO2023E-supply-composition-output-annual: from feng--------------------------
+# LMO2023E-supply-composition-output-total10yr: from Feng-----------------------
+# LMO2023E-supply-composition-output-annual: from Feng--------------------------
 # Definitions: from report
 
 
