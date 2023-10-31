@@ -9,10 +9,28 @@ library(lubridate)
 library(readxl)
 library(openxlsx)
 conflicts_prefer(dplyr::filter)
+pct = createStyle(numFmt="0.0%")
 current_year <- year(today())
 fyfn <- current_year+5
 tyfn <- current_year+10
 #functions---------------------------
+last_three_columns <- function(tbbl){
+  (ncol(tbbl)-2): ncol(tbbl)
+}
+
+write_last3_percent <- function(lst_of_tbbls, file_name){
+  tbbl <- lst_of_tbbls|>
+    enframe()|>
+    mutate(rows=map_dbl(value, nrow),
+           rows=map(rows, seq),
+           cols=map(value, last_three_columns)
+    )
+  wb = createWorkbook()
+  sht = map(tbbl$name, addWorksheet, wb=wb)
+  map2(sht, tbbl$value, writeData, wb=wb)
+  pmap(list(sheet=sht, rows= tbbl$rows, cols= tbbl$cols), addStyle, wb=wb, style=pct, gridExpand=TRUE)
+  saveWorkbook(wb, here("out", file_name), overwrite = TRUE)
+}
 
 fix_names <- function(tbbl){
   colnames(tbbl) <- str_replace_all(colnames(tbbl),"\r\n"," ")
@@ -93,7 +111,9 @@ tbbl1 <- employment%>%
 colnames(tbbl1) <- str_to_title(str_replace_all(colnames(tbbl1), "_", " "))
 colnames(tbbl1)[1] <- "NOC"
 
-write.xlsx(tbbl1, here("out", "Employment by Industry and Occupation for BC.xlsx"))
+tbbl1 <- list("data" = tbbl1)
+write_last3_percent(tbbl1, "Employment by Industry and Occupation for BC.xlsx")
+#write.xlsx(tbbl1, here("out", "Employment by Industry and Occupation for BC.xlsx"))
 
 #employment by industry for bc and regions-----------------------------------
 
@@ -118,9 +138,10 @@ tbbl2_by_region <- tbbl2|>
   select(-NOC, -Description, -Variable)|>
   split(tbbl2$`Geographic Area`)
 
-tbbl2 <- c(tbbl2_data, tbbl2_by_region)
 
-write.xlsx(tbbl2, here("out", "Employment by Industry for BC and Regions.xlsx"))
+tbbl2 <- c(tbbl2_data, tbbl2_by_region)
+write_last3_percent(tbbl2, "Employment by Industry for BC and Regions.xlsx")
+#write.xlsx(tbbl2, here("out", "Employment by Industry for BC and Regions.xlsx"))
 
 #job openings by industry and occupation for bc------------------------
 
@@ -212,9 +233,7 @@ tbbl6_by_region <- tbbl6|>
   split(tbbl6$`Geographic Area`)
 
 tbbl6 <- c(tbbl6_data, tbbl6_by_region)
-
-write.xlsx(tbbl6, here("out",
-                       "Employment by Occupation for BC and Regions.xlsx"))
+write_last3_percent(tbbl6, "Employment by Occupation for BC and Regions.xlsx")
 
 #Job_Openings_by_Type_and_Occ_for_BC_and_Regions_xxxx.xlsx
 
