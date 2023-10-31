@@ -113,7 +113,6 @@ colnames(tbbl1)[1] <- "NOC"
 
 tbbl1 <- list("data" = tbbl1)
 write_last3_percent(tbbl1, "Employment by Industry and Occupation for BC.xlsx")
-#write.xlsx(tbbl1, here("out", "Employment by Industry and Occupation for BC.xlsx"))
 
 #employment by industry for bc and regions-----------------------------------
 
@@ -141,7 +140,6 @@ tbbl2_by_region <- tbbl2|>
 
 tbbl2 <- c(tbbl2_data, tbbl2_by_region)
 write_last3_percent(tbbl2, "Employment by Industry for BC and Regions.xlsx")
-#write.xlsx(tbbl2, here("out", "Employment by Industry for BC and Regions.xlsx"))
 
 #job openings by industry and occupation for bc------------------------
 
@@ -163,14 +161,38 @@ colnames(tbbl3)[1] <- "NOC"
 write.xlsx(tbbl3, here("out", "Job Openings by Industry and Occupation for BC.xlsx"))
 
 # High_Opportunity_Occupations_BC_and_regions------------------------------
+
+one <- "Data Dictionary"
+two <- paste0("These data sets contain lists of occupations that are deemed to be high opportunity occupations (HOO) over the 10 year forecast period (",current_year,"-",tyfn,")")
+three <- "Lists are provided for the 7 economic regions. Additionally, the lists
+ provide estimates for Job Openings (for the 10 year forecast period), as well as
+ the most recent Income data provided by Census 2021."
+four <- "#NOC (2021): Denotes a 5-digit code according to the National Occupation Classification
+ 2021 system from Statistics Canada."
+five <- "NOC (2021) Occupation Title:  Denotes the occupation title according to the National
+ Occupation Classification 2021 system from Statisitics Canada."
+six <- paste0("LMO Job Openings ",current_year,"-",tyfn,": The sum of expansion and replacement job openings. A job opening
+ is the addition of a new job position through economic growth or a position that needs
+ to be filled due  to someone exiting the labour force permanently.")
+seven <- "TEER:  the type and/or amount of training, education, experience and
+ responsibility typically required to work in an occupation. The NOC consists of
+ six TEER categories, identified 0 through 5, which represent the second digit of the NOC code."
+eight <- "Income: Median Income for full year full time employees."
+
+data_dictionary <- list(`Data Dictionary`=tibble(" "=c(one, two, three, four, five, six, seven, eight)))
+
+
 hoo_sheets <- excel_sheets(here("raw_data",
                                 "LMO 2023E HOO BC and Regions 2023-08-23.xlsx"))
-tibble(sheet=hoo_sheets[-length(hoo_sheets)])%>%
+hoo <- tibble(sheet=hoo_sheets[-length(hoo_sheets)])%>%
   mutate(data=map(sheet, load_sheet),
          data=map(data, join_income),
          data=map(data, fix_names))%>% #weirdness with job openings column name
-  deframe()%>%
-  write.xlsx(file = here("out",
+  deframe()
+hoo <- c(data_dictionary, hoo)
+
+
+write.xlsx(hoo, file = here("out",
                          "High Opportunity Occupations BC and Regions.xlsx"))
 
 #JO_by_Type,_Ind_and_Occ_for_BC_and_Regions_xxxx.xlsx---------
