@@ -22,6 +22,7 @@ write_last3_percent <- function(lst_of_tbbls, file_name){
   tbbl <- lst_of_tbbls|>
     enframe()|>
     mutate(rows=map_dbl(value, nrow),
+           rows=rows+1,#need an extra row???
            rows=map(rows, seq),
            cols=map(value, last_three_columns)
     )
