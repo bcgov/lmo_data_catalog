@@ -85,17 +85,26 @@ get_noc <- function(str){
 #read in data--------------------
 
 employment <- vroom(here("raw_data","employment.csv"), skip = 3)%>%
-  janitor::remove_empty()
+  janitor::remove_empty() |>
+  mutate(Description=if_else(Description=="Seniors managers - public and private sector",
+                             "Senior managers - public and private sector",
+                             Description))
 
 jo <- vroom(here("raw_data","job_openings.csv"), skip = 3)%>%
-  janitor::remove_empty()
+  janitor::remove_empty()|>
+  mutate(Description=if_else(Description=="Seniors managers - public and private sector",
+                             "Senior managers - public and private sector",
+                             Description))
 
 income <- read_excel(here("raw_data","Census 2021 Median Employment Income.xlsx"))|>
   select(NOC, `Median Income (Census 2021)`= contains("Median employment income"))|>
   mutate(`Median Income (Census 2021)`=as.numeric(`Median Income (Census 2021)`))
 
 sd <- vroom(here("raw_data","supply_demand5.csv"), skip = 3)%>%
-  janitor::remove_empty()
+  janitor::remove_empty()|>
+  mutate(Description=if_else(Description=="Seniors managers - public and private sector",
+                             "Senior managers - public and private sector",
+                             Description))
 
 #employment by industry and occupation for bc-------------------------------
 
