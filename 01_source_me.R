@@ -45,11 +45,6 @@ write_last3_percent <- function(lst_of_tbbls, file_name){
   saveWorkbook(wb, here("out", file_name), overwrite = TRUE)
 }
 
-# fix_names <- function(tbbl){
-#   #takes a tibble as an input and returns a tibble where column names have had \r\n removed
-#   colnames(tbbl) <- str_replace_all(colnames(tbbl),"\r\n"," ")
-#   tbbl
-# }
 cagrs <- function(tbbl){
   #' takes as an input a tbbl with 2 columns year and value and returns
   #' a tibble with CAGRs: NOT multiplied by 100: formatted as % when written to excel.
