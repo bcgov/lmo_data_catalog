@@ -2,10 +2,8 @@
 #'
 #' "employment.csv" (4castviewer)
 #' "job_openings.csv"  (4castviewer)
-#' "LMO 2023E HOO BC and Regions 2023-08-23.xlsx" (Feng)
+#' "Occupational Characteristics..." (Feng)
 #' "clusters.csv" (https://rpubs.com/rpmartin/1058369)
-#' "Census 2021 Median Employment Income.xlsx" (maybe previous year wage next year?... NA because NOC change)
-#'  some code to correct the senior vs seniors management can probably be removed next year?
 
 #' To Run: Source me!
 
@@ -20,7 +18,7 @@ library(conflicted)
 #constants------------------------------------
 conflicts_prefer(dplyr::filter)
 pct = createStyle(numFmt="0.0%")
-fyod <- year(today()) #first year of data: assumes equal to current year, manually set if not
+fyod <- 2024 #first year of data
 fyfn <- fyod+5
 tyfn <- fyod+10
 source("hoo_text.R") #data dictionary for hoo file
@@ -47,11 +45,11 @@ write_last3_percent <- function(lst_of_tbbls, file_name){
   saveWorkbook(wb, here("out", file_name), overwrite = TRUE)
 }
 
-fix_names <- function(tbbl){
-  #takes a tibble as an input and returns a tibble where column names have had \r\n removed
-  colnames(tbbl) <- str_replace_all(colnames(tbbl),"\r\n"," ")
-  tbbl
-}
+# fix_names <- function(tbbl){
+#   #takes a tibble as an input and returns a tibble where column names have had \r\n removed
+#   colnames(tbbl) <- str_replace_all(colnames(tbbl),"\r\n"," ")
+#   tbbl
+# }
 cagrs <- function(tbbl){
   #' takes as an input a tbbl with 2 columns year and value and returns
   #' a tibble with CAGRs: NOT multiplied by 100: formatted as % when written to excel.
@@ -75,37 +73,33 @@ sums <- function(tbbl){
          `10-year Sum`=ty_sum)
 }
 
-load_sheet <- function(sht){
-  #' takes as an input an excel sheet name, and then reads that sheet from file
-  #' HOO BC and Regions, and derives the TEER
-  temp <- read_excel(here("raw_data",
-                          list.files(here("raw_data"), pattern = "HOO BC and Regions")),
-                     sheet=sht,
-                     skip=4)
-  temp[,1:3]%>%
-    mutate(TEER=str_sub(`#NOC (2021)`,3,3))
+keep_only_hoo <- function(column, tbbl){
+  tbbl |>
+    filter(!grepl("Non", get(column)))|>
+    select(NOC, Description, `2021 Census Median Employment Income (Employed)`)|>
+    mutate(TEER=str_sub(NOC, 3, 3), .after="Description")
 }
-join_income <- function(tbbl){
-  #'takes a tibble and joins it to tibble "income".  Returns the joined tibble.
-  inner_join(tbbl, income, by=c("#NOC (2021)"="NOC"))
+
+add_jo <- function(tbbl, region){
+  jos_for_region <- regional_jo_by_occ|>
+    filter(`Geographic Area`==region)
+  left_join(tbbl, jos_for_region)|>
+    relocate(contains("Job Openings"), .after="Description")|>
+    select(-`Geographic Area`)
 }
 
 #read in data--------------------
 employment <- vroom(here("raw_data","employment.csv"), skip = 3)%>%
-  janitor::remove_empty() |>
-  mutate(Description=if_else(Description=="Seniors managers - public and private sector",
-                             "Senior managers - public and private sector",
-                             Description))
+  janitor::remove_empty()
 
 jo <- vroom(here("raw_data","job_openings.csv"), skip = 3)%>%
-  janitor::remove_empty()|>
-  mutate(Description=if_else(Description=="Seniors managers - public and private sector",
-                             "Senior managers - public and private sector",
-                             Description))
+  janitor::remove_empty()
 
-income <- read_excel(here("raw_data","Census 2021 Median Employment Income.xlsx"))|>
-  select(NOC, `Median Income (Census 2021)`= contains("Median employment income"))|>
-  mutate(`Median Income (Census 2021)`=as.numeric(`Median Income (Census 2021)`))
+occ_char <- readxl::read_excel(here("raw_data", 
+                                    list.files(here("raw_data"), 
+                                               pattern="Occupational Characteristics")), 
+                               skip = 3, 
+                               na = "x")
 
 #employment by industry and occupation for bc-------------------------------
 
@@ -172,17 +166,37 @@ colnames(tbbl3)[1] <- "NOC"
 write.xlsx(tbbl3, here("out", "Job Openings by Industry and Occupation for BC.xlsx"))
 
 # High_Opportunity_Occupations_BC_and_regions------------------------------
-hoo_sheets <- excel_sheets(here("raw_data",
-                                "LMO 2023E HOO BC and Regions 2023-08-23.xlsx"))
-hoo <- tibble(sheet=hoo_sheets[-length(hoo_sheets)])%>%
-  mutate(data=map(sheet, load_sheet),
-         data=map(data, join_income),
-         data=map(data, fix_names))%>% #weirdness with job openings column name
-  deframe()
-tbbl4 <- c(data_dictionary, hoo)
+hoo_cols <- colnames(occ_char)[str_detect(colnames(occ_char),"Group: HOO")]
+hoo_sheet_names <- str_remove_all(hoo_cols, "Occ Group: ")|>
+  str_remove_all(" 2024E")
+occ_char_hoo <- occ_char|>
+  select(NOC, 
+         Description, 
+         all_of(hoo_cols), 
+         `2021 Census Median Employment Income (Employed)`
+         )
 
-write.xlsx(tbbl4, file = here("out",
-                         "High Opportunity Occupations BC and Regions.xlsx"))
+regional_jo_by_occ <- jo|>
+  filter(Industry=="All industries",
+         Variable=="Job Openings")|>
+  pivot_longer(cols = starts_with("2"), names_to = "year", values_to = "value")|>
+  group_by(NOC, `Geographic Area`)|>
+  summarize("LMO Job Openings {fyod}-{tyfn}":=sum(value))
+regions <- sort(unique(regional_jo_by_occ$`Geographic Area`))
+
+hoo_tbbl <- tibble(hoo_cols=hoo_cols,
+                   hoo_sheet_names=hoo_sheet_names,
+                   occ_char_hoo=list(occ_char_hoo))|>
+  mutate(hoo=map2(hoo_cols, occ_char_hoo, keep_only_hoo))|>
+  select(hoo_sheet_names, hoo)|>
+  arrange(hoo_sheet_names)|>
+  mutate(full_region_name=regions,
+         hoo=map2(hoo, full_region_name, add_jo)
+         )|>
+  select(-full_region_name)
+
+c(data_dictionary, setNames(hoo_tbbl$hoo, hoo_tbbl$hoo_sheet_names))|>
+  write.xlsx(file = here("out", "High Opportunity Occupations BC and Regions.xlsx"))
 
 #JO_by_Type,_Ind_and_Occ_for_BC_and_Regions_xxxx.xlsx---------
 
@@ -190,7 +204,7 @@ tbbl5 <- jo%>%
   pivot_longer(cols=starts_with("2"), names_to = "year", values_to = "value")%>%
   clean_names()%>%
   filter(variable %in% c("Job Openings", "Expansion Demand", "Replacement Demand"),
-         !geographic_area %in% c("North","South East")
+       #  !geographic_area %in% c("North","South East")
          )%>%
   group_by(noc, description, industry, variable, geographic_area)%>%
   nest()%>%
@@ -291,6 +305,7 @@ zip(zipfile=here("out",
 #get rid of csv file
 file.remove(here("out",
                   "JO by Type, Ind and Occ for BC and Regions (long).csv"))
+
 # Supply Composition for BC (10-Year Total) from Feng-------------
 # Supply Composition for BC (Annual) from Feng--------------------
 # Definitions: from report----------------
