@@ -1,3 +1,5 @@
+fyod <- 2024 #first year of data... need to increment each year
+
 #' This script prepares 10 files for the BC data catalog: Requires inputs:
 #'
 #' "employment.csv" (4castviewer)
@@ -5,7 +7,7 @@
 #' "Occupational Characteristics..." (Feng)
 #' "clusters.csv" (https://rpubs.com/rpmartin/1058369)
 
-#' To Run: Source me!
+#' To Run: change first year of data, then source this file.
 
 #libraries----------------------------
 library(tidyverse)
@@ -15,13 +17,14 @@ library(janitor)
 library(readxl)
 library(openxlsx)
 library(conflicted)
+
 #constants------------------------------------
 conflicts_prefer(dplyr::filter)
 pct = createStyle(numFmt="0.0%")
-fyod <- 2024 #first year of data
 fyfn <- fyod+5
 tyfn <- fyod+10
 source("hoo_text.R") #data dictionary for hoo file
+
 #functions---------------------------
 last_three_columns <- function(tbbl){
   #' takes a tibble as an input, and returns an integer vector with the positions of the last 3 columns.
@@ -44,7 +47,6 @@ write_last3_percent <- function(lst_of_tbbls, file_name){
   pmap(list(sheet=sht, rows= tbbl$rows, cols= tbbl$cols), addStyle, wb=wb, style=pct, gridExpand=TRUE)
   saveWorkbook(wb, here("out", file_name), overwrite = TRUE)
 }
-
 cagrs <- function(tbbl){
   #' takes as an input a tbbl with 2 columns year and value and returns
   #' a tibble with CAGRs: NOT multiplied by 100: formatted as % when written to excel.
@@ -67,14 +69,12 @@ sums <- function(tbbl){
          `2nd 5-year Sum`=sfy_sum,
          `10-year Sum`=ty_sum)
 }
-
 keep_only_hoo <- function(column, tbbl){
   tbbl |>
     filter(!grepl("Non", get(column)))|>
     select(NOC, Description, `2021 Census Median Employment Income (Employed)`)|>
     mutate(TEER=str_sub(NOC, 3, 3), .after="Description")
 }
-
 add_jo <- function(tbbl, region){
   jos_for_region <- regional_jo_by_occ|>
     filter(`Geographic Area`==region)
@@ -97,7 +97,6 @@ occ_char <- readxl::read_excel(here("raw_data",
                                na = "x")
 
 #employment by industry and occupation for bc-------------------------------
-
 tbbl1 <- employment%>%
   pivot_longer(cols=starts_with("2"), names_to = "year", values_to = "value")%>%
   clean_names()%>%
@@ -109,14 +108,16 @@ tbbl1 <- employment%>%
   pivot_wider(names_from = year, values_from = value)%>%
   relocate(cagrs, .after=everything())%>%
   unnest(cagrs)
+
 colnames(tbbl1) <- str_to_title(str_replace_all(colnames(tbbl1), "_", " "))
+
 colnames(tbbl1)[1] <- "NOC"
 
 tbbl1 <- list("data" = tbbl1)
+
 write_last3_percent(tbbl1, "Employment by Industry and Occupation for BC.xlsx")
 
 #employment by industry for bc and regions-----------------------------------
-
 tbbl2 <- employment%>%
   pivot_longer(cols=starts_with("2"), names_to = "year", values_to = "value")%>%
   clean_names()%>%
@@ -129,20 +130,23 @@ tbbl2 <- employment%>%
   pivot_wider(names_from = year, values_from = value)%>%
   relocate(cagrs, .after=everything())%>%
   unnest(cagrs)
+
 colnames(tbbl2) <- str_to_title(str_replace_all(colnames(tbbl2), "_", " "))
+
 colnames(tbbl2)[1] <- "NOC"
 
 tbbl2_data <- list("data" = tbbl2)
+
 tbbl2_by_region <- tbbl2|>
   ungroup()|>
   select(-NOC, -Description, -Variable)|>
   split(tbbl2$`Geographic Area`)
 
 tbbl2 <- c(tbbl2_data, tbbl2_by_region)
+
 write_last3_percent(tbbl2, "Employment by Industry for BC and Regions.xlsx")
 
 #job openings by industry and occupation for bc------------------------
-
 tbbl3 <- jo%>%
   pivot_longer(cols=starts_with("2"), names_to = "year", values_to = "value")%>%
   clean_names()%>%
@@ -155,15 +159,19 @@ tbbl3 <- jo%>%
   pivot_wider(names_from = year, values_from = value)%>%
   relocate(sums, .after=everything())%>%
   unnest(sums)
+
 colnames(tbbl3) <- str_to_title(str_replace_all(colnames(tbbl3), "_", " "))
+
 colnames(tbbl3)[1] <- "NOC"
 
 write.xlsx(tbbl3, here("out", "Job Openings by Industry and Occupation for BC.xlsx"))
 
 # High_Opportunity_Occupations_BC_and_regions------------------------------
 hoo_cols <- colnames(occ_char)[str_detect(colnames(occ_char),"Group: HOO")]
+
 hoo_sheet_names <- str_remove_all(hoo_cols, "Occ Group: ")|>
   str_remove_all(" 2024E")
+
 occ_char_hoo <- occ_char|>
   select(NOC, 
          Description, 
@@ -177,6 +185,7 @@ regional_jo_by_occ <- jo|>
   pivot_longer(cols = starts_with("2"), names_to = "year", values_to = "value")|>
   group_by(NOC, `Geographic Area`)|>
   summarize("LMO Job Openings {fyod}-{tyfn}":=sum(value))
+
 regions <- sort(unique(regional_jo_by_occ$`Geographic Area`))
 
 hoo_tbbl <- tibble(hoo_cols=hoo_cols,
@@ -210,6 +219,7 @@ tbbl5 <- jo%>%
   unnest(sums)
 
 colnames(tbbl5) <- str_to_title(str_replace_all(colnames(tbbl5), "_", " "))
+
 colnames(tbbl5)[1] <- "NOC"
 
 tbbl5|>
@@ -219,18 +229,17 @@ tbbl5|>
              )
 
 #Employment_by_Ind_and_Occ_for_BC_and_Regions_xxxx.xlsx------------------
-
 tbbl6 <- employment|>
   filter(!`Geographic Area` %in% c("North", "South East"))|>
   pivot_longer(cols = starts_with("2"),
                names_to = "Date",
                values_to = "Value")
-  write.xlsx(tbbl6,
+
+write.xlsx(tbbl6,
              here("out",
                   "Employment by Ind and Occ for BC and Regions.xlsx"))
 
 #Employment_by_Occupation_for_BC_and_Regions_xxxx.xlsx------------------
-
 tbbl7 <- employment%>%
   pivot_longer(cols=starts_with("2"), names_to = "year", values_to = "value")%>%
   clean_names()%>%
@@ -243,20 +252,24 @@ tbbl7 <- employment%>%
   pivot_wider(names_from = year, values_from = value)%>%
   relocate(cagrs, .after=everything())%>%
   unnest(cagrs)
+
 colnames(tbbl7) <- str_to_title(str_replace_all(colnames(tbbl7), "_", " "))
+
 colnames(tbbl7)[1] <- "NOC"
 
+
 tbbl7_data <- list("data"=tbbl7)
+
 tbbl7_by_region <- tbbl7|>
   ungroup()|>
   select(-Industry, -Variable)|>
   split(tbbl7$`Geographic Area`)
 
 tbbl7 <- c(tbbl7_data, tbbl7_by_region)
+
 write_last3_percent(tbbl7, "Employment by Occupation for BC and Regions.xlsx")
 
 #Job_Openings_by_Type_and_Occ_for_BC_and_Regions_xxxx.xlsx
-
 tbbl8 <- jo%>%
   pivot_longer(cols=starts_with("2"), names_to = "year", values_to = "value")%>%
   clean_names()%>%
@@ -270,10 +283,13 @@ tbbl8 <- jo%>%
   pivot_wider(names_from = year, values_from = value)%>%
   relocate(sums, .after=everything())%>%
   unnest(sums)
+
 colnames(tbbl8) <- str_to_title(str_replace_all(colnames(tbbl8), "_", " "))
+
 colnames(tbbl8)[1] <- "NOC"
 
 tbbl8_data <- list("data"=tbbl8)
+
 tbbl8_by_region <- tbbl8|>
   ungroup()|>
   select(-Industry)|>
@@ -286,7 +302,6 @@ write.xlsx(tbbl8, here("out",
            asTable = TRUE)
 
 #JO_by_Type,_Ind_and_Occ_for_BC_and_Regions_long---------------------------
-
 tbbl9 <- jo%>%
   pivot_longer(cols=starts_with("2"), names_to = "year", values_to = "value")%>%
   filter(!`Geographic Area` %in% c("North","South East"))
