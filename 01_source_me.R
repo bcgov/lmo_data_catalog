@@ -311,7 +311,8 @@ write_csv(tbbl9, here("out",
 #huge file so zip it---------------------
 zip(zipfile=here("out",
                  "JO by Type, Ind and Occ for BC and Regions (long)"),
-    files=here("out","JO by Type, Ind and Occ for BC and Regions (long).csv"))
+    files=here("out", "JO by Type, Ind and Occ for BC and Regions (long).csv"),
+    flags = "-j")
 #get rid of csv file
 file.remove(here("out",
                   "JO by Type, Ind and Occ for BC and Regions (long).csv"))
