@@ -1,10 +1,10 @@
-fyod <- 2024 #first year of data... need to increment each year
+fyod <- 2025 #first year of data... need to increment each year
 
-#' This script prepares 10 files for the BC data catalog: Requires inputs:
+#' This script prepares 9 files for the BC data catalog: Requires inputs:
 #'
-#' "employment.csv" (4castviewer)
-#' "job_openings.csv"  (4castviewer)
-#' "Occupational Characteristics..." (Feng)
+#' "employment.csv" (4castviewer... note .csv)
+#' "job_openings.csv"  (4castviewer... note .csv)
+#' "Occupational Characteristics..." (Nicole)
 #' "clusters.csv" (https://rpubs.com/rpmartin/1058369)
 
 #' To Run: change first year of data, then source this file.
@@ -15,6 +15,7 @@ library(here)
 library(vroom)
 library(janitor)
 library(readxl)
+library(vroom)
 library(openxlsx)
 library(conflicted)
 
@@ -72,7 +73,7 @@ sums <- function(tbbl){
 keep_only_hoo <- function(column, tbbl){
   tbbl |>
     filter(!grepl("Non", get(column)))|>
-    select(NOC, Description, `2021 Census Median Employment Income (Employed)`)|>
+    select(NOC, Description, contains("Synthetic"))|>
     mutate(TEER=str_sub(NOC, 3, 3), .after="Description")
 }
 add_jo <- function(tbbl, region){
@@ -167,16 +168,15 @@ colnames(tbbl3)[1] <- "NOC"
 write.xlsx(tbbl3, here("out", "Job Openings by Industry and Occupation for BC.xlsx"))
 
 # High_Opportunity_Occupations_BC_and_regions------------------------------
-hoo_cols <- colnames(occ_char)[str_detect(colnames(occ_char),"Group: HOO")]
+hoo_cols <- colnames(occ_char)[str_detect(colnames(occ_char),"HOO")]
 
-hoo_sheet_names <- str_remove_all(hoo_cols, "Occ Group: ")|>
-  str_remove_all(" 2024E")
+hoo_sheet_names <- hoo_cols
 
 occ_char_hoo <- occ_char|>
   select(NOC, 
          Description, 
          all_of(hoo_cols), 
-         `2021 Census Median Employment Income (Employed)`
+         contains("Synthetic")
          )
 
 regional_jo_by_occ <- jo|>
@@ -208,7 +208,7 @@ tbbl5 <- jo%>%
   pivot_longer(cols=starts_with("2"), names_to = "year", values_to = "value")%>%
   clean_names()%>%
   filter(variable %in% c("Job Openings", "Expansion Demand", "Replacement Demand"),
-       #  !geographic_area %in% c("North","South East")
+         !geographic_area %in% c("North","South East")
          )%>%
   group_by(noc, description, industry, variable, geographic_area)%>%
   nest()%>%
@@ -322,26 +322,26 @@ file.remove(here("out",
 # Definitions: from report----------------
 
 #Job Openings by Skill Cluster-------------------------------
-
-tbbl10 <- jo |>
-  filter(Industry=="All industries",
-         `Geographic Area`=="British Columbia",
-         Variable=="Job Openings")|>
-  select(-Industry, -`Geographic Area`, -Variable)|>
-  pivot_longer(cols=starts_with("2"), names_to = "year", values_to = "jo")|>
-  group_by(NOC, Description)|>
-  summarize(jo=sum(jo))
-
-clusters <- read_csv(here("raw_data","clusters.csv"))|>
-  select(NOC, new_cluster)|>
-  separate(NOC, into=c("NOC", "Description"), sep=": ")|>
-  mutate(NOC=paste0("#", NOC))
-
-inner_join(tbbl10, clusters)|>
-  select(NOC,
-         Description,
-         `Occ Group: Skills Cluster`=new_cluster,
-         "LMO Job Openings {fyod}-{tyfn}":=jo
-         )|>
-  write.xlsx(here("out",
-                  "Job Openings by NOC and Skill Cluster.xlsx"))
+# 
+# tbbl10 <- jo |>
+#   filter(Industry=="All industries",
+#          `Geographic Area`=="British Columbia",
+#          Variable=="Job Openings")|>
+#   select(-Industry, -`Geographic Area`, -Variable)|>
+#   pivot_longer(cols=starts_with("2"), names_to = "year", values_to = "jo")|>
+#   group_by(NOC, Description)|>
+#   summarize(jo=sum(jo))
+# 
+# clusters <- read_csv(here("raw_data","clusters.csv"))|>
+#   select(NOC, new_cluster)|>
+#   separate(NOC, into=c("NOC", "Description"), sep=": ")|>
+#   mutate(NOC=paste0("#", NOC))
+# 
+# inner_join(tbbl10, clusters)|>
+#   select(NOC,
+#          Description,
+#          `Occ Group: Skills Cluster`=new_cluster,
+#          "LMO Job Openings {fyod}-{tyfn}":=jo
+#          )|>
+#   write.xlsx(here("out",
+#                   "Job Openings by NOC and Skill Cluster.xlsx"))
