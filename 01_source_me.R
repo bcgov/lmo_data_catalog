@@ -5,7 +5,6 @@ fyod <- 2025 #first year of data... need to increment each year
 #' "employment.csv" (4castviewer... note .csv)
 #' "job_openings.csv"  (4castviewer... note .csv)
 #' "Occupational Characteristics..." (Nicole)
-#' "clusters.csv" (https://rpubs.com/rpmartin/1058369)
 
 #' To Run: change first year of data, then source this file.
 
